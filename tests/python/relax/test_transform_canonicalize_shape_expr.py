@@ -37,13 +37,10 @@ def test_simple_compound_shape():
 
     mod = tvm.IRModule.from_expr(before)
     mod = relax.transform.CanonicalizeShapeExpr()(mod)
-
-    # After canonicalization, the shape should use a symbolic var instead of n + 1
-    # Check that VMShapeLower can process it
+    mod = relax.transform.ComputePrimValue()(mod)
     mod = relax.transform.VMShapeLower()(mod)
 
-    # If we got here without error, the test passed
-    assert "main" in mod
+    assert "compute_symbolic_expr" in [str(gv) for gv in mod.get_global_vars()]
 
 
 def test_compound_shape_in_constant():
@@ -59,12 +56,44 @@ def test_compound_shape_in_constant():
         return y
 
     mod = tvm.IRModule.from_expr(before)
+    print("=== Before CanonicalizeShapeExpr ===")
+    print(mod)
     mod = relax.transform.CanonicalizeShapeExpr()(mod)
+    print("=== After CanonicalizeShapeExpr ===")
+    print(mod)
+
+    # Check well-formed immediately after CanonicalizeShapeExpr
+    is_wf = relax.analysis.well_formed(mod)
+    print(f"=== Well-formed after CanonicalizeShapeExpr: {is_wf} ===")
+    if not is_wf:
+        raise RuntimeError("IR is not well-formed after CanonicalizeShapeExpr")
+
+    mod = relax.transform.Normalize()(mod)
+    print("=== After Normalize ===")
+    print(mod)
+
+    # Check well-formed immediately after Normalize
+    is_wf = relax.analysis.well_formed(mod)
+    print(f"=== Well-formed after Normalize: {is_wf} ===")
+    if not is_wf:
+        raise RuntimeError("IR is not well-formed after Normalize")
+
+    mod = relax.transform.ComputePrimValue()(mod)
+    print("=== After ComputePrimValue ===")
+    print(mod)
+
+    # Check well-formed immediately after ComputePrimValue
+    is_wf = relax.analysis.well_formed(mod)
+    print(f"=== Well-formed after ComputePrimValue: {is_wf} ===")
+    if not is_wf:
+        raise RuntimeError("IR is not well-formed after ComputePrimValue")
 
     mod = relax.transform.VMShapeLower()(mod)
+    print("=== After VMShapeLower ===")
+    print(mod)
 
-    # If we got here without error, the test passed
-    assert "main" in mod
+    # Verify a compute function was generated for the compound expression
+    assert "compute_symbolic_expr" in [str(gv) for gv in mod.get_global_vars()]
 
 
 def test_multiply_compound_shape():
@@ -84,11 +113,11 @@ def test_multiply_compound_shape():
 
     mod = tvm.IRModule.from_expr(before)
     mod = relax.transform.CanonicalizeShapeExpr()(mod)
-
+    mod = relax.transform.ComputePrimValue()(mod)
     mod = relax.transform.VMShapeLower()(mod)
 
-    # If we got here without error, the test passed
-    assert "main" in mod
+    # Verify a compute function was generated for the compound expression
+    assert "compute_symbolic_expr" in [str(gv) for gv in mod.get_global_vars()]
 
 
 def test_no_change_for_canonical_shape():
@@ -106,12 +135,15 @@ def test_no_change_for_canonical_shape():
 
     # The mod should be unchanged (or minimally changed)
     # Both should work with VMShapeLower
-    mode_before_lower = relax.transform.VMShapeLower()(mod_before)
-    mode_after_lower = relax.transform.VMShapeLower()(mod_after)
+    mod_before_lower = relax.transform.ComputePrimValue()(mod_before)
+    mod_before_lower = relax.transform.VMShapeLower()(mod_before_lower)
+    mod_after_lower = relax.transform.ComputePrimValue()(mod_after)
+    mod_after_lower = relax.transform.VMShapeLower()(mod_after_lower)
 
-    # If we got here without error, the test passed
-    assert "main" in mod_before_lower
-    assert "main" in mode_after_lower
+    # For canonical shapes, no compute_symbolic_expr should be generated
+    # (only compound expression need computation)
+    global_var_names = [str(gv) for gv in mod_after_lower.get_global_vars()]
+    assert "compute_symbolic_expr" not in global_var_names
 
 
 def test_no_change_for_concrete_shape():
@@ -125,11 +157,12 @@ def test_no_change_for_concrete_shape():
 
     mod = tvm.IRModule.from_expr(before)
     mod = relax.transform.CanonicalizeShapeExpr()(mod)
-
+    mod = relax.transform.ComputePrimValue()(mod)
     mod = relax.transform.VMShapeLower()(mod)
 
-    # If we got here without error, the test passed
-    assert "main" in mod
+    # For concrete shapes, no compute_symbolic_expr should be generated
+    global_var_names = [str(gv) for gv in mod.get_global_vars()]
+    assert "compute_symbolic_expr" not in global_var_names
 
 
 def test_tuple_struct_info():
@@ -147,11 +180,11 @@ def test_tuple_struct_info():
 
     mod = tvm.IRModule.from_expr(before)
     mod = relax.transform.CanonicalizeShapeExpr()(mod)
-
+    mod = relax.transform.ComputePrimValue()(mod)
     mod = relax.transform.VMShapeLower()(mod)
 
-    # If we got here without error, the test passed
-    assert "main" in mod
+    # Verify compute functions were generated for the compound expressions
+    assert "compute_symbolic_expr" in [str(gv) for gv in mod.get_global_vars()]
 
 
 def test_full_pipeline_with_opt_level_1():
@@ -175,7 +208,8 @@ def test_full_pipeline_with_opt_level_1():
         mod = relax.transform.CanonicalizeShapeExpr()(mod)
         mod = relax.transform.VMShapeLower()(mod)
 
-    assert "main" in mod
+    # Verify a compute function was generated for the compound expression
+    assert "compute_symbolic_expr" in [str(gv) for gv in mod.get_global_vars()]
 
 
 if __name__ == "__main__":
