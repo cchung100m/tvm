@@ -56,6 +56,7 @@ def finalize_passes(target: tvm.target.Target):  # pylint: disable=unused-argume
         relax.transform.LowerAllocTensor(),
         relax.transform.KillAfterLastUse(),
         relax.transform.LowerRuntimeBuiltin(),
+        relax.transform.ShapeExprCanonicalize(),
         relax.transform.ComputePrimValue(),
         relax.transform.VMShapeLower(),
         relax.transform.AttachGlobalSymbol(),
