@@ -1857,7 +1857,17 @@ class BaseFXGraphImporter(metaclass=abc.ABCMeta):
                 indices = relax.Tuple(processed_indices)
             else:
                 indices = relax.Tuple(indices)
-        return self.block_builder.emit(relax.op.index_put(tensor, indices, values, accumulate))
+
+        output = self.block_builder.emit(relax.op.index_put(tensor, indices, values, accumulate))
+
+        target_name = getattr(node.target, "__name__", "")
+        if target_name.startswith("index_put_") and len(node.args) > 0:
+            from torch import fx
+
+            if isinstance(node.args[0], fx.Node):
+                self.env[node.args[0]] = output
+
+        return output
 
     def _index_tensor(self, node: fx.Node) -> relax.Var:
         args = self.retrieve_args(node)

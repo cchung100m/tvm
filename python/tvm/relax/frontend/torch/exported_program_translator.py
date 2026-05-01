@@ -1340,6 +1340,38 @@ class ExportedProgramImporter(BaseFXGraphImporter):
         assert output_args is not None
         return output_args
 
+    @staticmethod
+    def _flatten_output_args(output_args) -> tuple[relax.Expr, ...]:
+        """Flatten output args into a tuple of Relax expressions.
+
+        ExportedProgram output trees contain nested Python tuple/list containers
+        (e.g. mutation outputs + user tuple outputs). Emitting nested Python tuples
+        directly through FFI may construct invalid Relax tuples.
+        """
+
+        flattened: list[relax.Expr] = []
+
+        def _visit(value):
+            if isinstance(value, relax.Expr):
+                flattened.append(value)
+            elif isinstance(value, list | tuple):
+                for item in value:
+                    _visit(item)
+            elif value is None:
+                return
+            else:
+                raise ValueError(
+                    "Unsupported output type in exported graph output: "
+                    f"{type(value)}"
+                )
+
+        _visit(output_args)
+
+        if not flattened:
+            raise ValueError("Exported graph produced no Relax outputs")
+
+        return tuple(flattened)
+
     def _import_branch_subgraph(
         self,
         graph_module,  # torch.fx.GraphModule
