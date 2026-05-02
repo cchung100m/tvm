@@ -1358,7 +1358,8 @@ class ExportedProgramImporter(BaseFXGraphImporter):
                 for item in value:
                     _visit(item)
             elif value is None:
-                return
+                # Preserve explicit None outputs as Relax null objects.
+                flattened.append(relax.op.null_value())
             else:
                 raise ValueError(
                     "Unsupported output type in exported graph output: "
