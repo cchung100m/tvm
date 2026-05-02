@@ -1338,7 +1338,7 @@ class ExportedProgramImporter(BaseFXGraphImporter):
                 raise ValueError(f"Unsupported op {node.op}")
 
         assert output_args is not None
-        return output_args
+        return self._flatten_output_args(output_args)
 
     @staticmethod
     def _flatten_output_args(output_args) -> tuple[relax.Expr, ...]:
