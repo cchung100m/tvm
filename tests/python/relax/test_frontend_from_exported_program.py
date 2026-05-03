@@ -7405,12 +7405,12 @@ def test_index_put():
 def test_index_put_with_tuple_output():
     class IndexPutTupleOutput(Module):
         def forward(self, x, l, idx):
-            values = x[..., :1]
+            values = x
             l[..., idx, idx] = values
             return x[..., 1], l
 
     example_args = (
-        torch.ones(2, 3, 11, 11, dtype=torch.float32),
+        torch.ones(2, 3, 5, dtype=torch.float32),
         torch.zeros(2, 3, 11, 11, dtype=torch.float32),
         torch.tensor([0, 2, 5, 7, 9], dtype=torch.int64),
     )
@@ -7424,7 +7424,7 @@ def test_index_put_with_tuple_output():
     tensor_fields = [f for f in ret_sinfo.fields if isinstance(f, relax.TensorStructInfo)]
     assert len(tensor_fields) >= 2
 
-    assert any(len(f.shape) == 4 and f.shape[-1] == 1 for f in tensor_fields)
+    assert any(len(f.shape) == 3 and f.shape[-1] == 1 for f in tensor_fields)
     assert any(len(f.shape) == 4 and f.shape[-2] == 11 and f.shape[-1] == 11 for f in tensor_fields)
 
 
