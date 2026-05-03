@@ -1860,7 +1860,7 @@ class BaseFXGraphImporter(metaclass=abc.ABCMeta):
 
         output = self.block_builder.emit(relax.op.index_put(tensor, indices, values, accumulate))
 
-        target_name = getattr(node.target, "__name__", "")
+        target_name = node.target if isinstance(node.target, str) else getattr(node.target, "__name__", "")
         if target_name.startswith("index_put_") and len(node.args) > 0:
             from torch import fx
 
