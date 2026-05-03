@@ -2028,7 +2028,7 @@ class ExportedProgramImporter(BaseFXGraphImporter):
                 output_args = self._translate_fx_graph(
                     exported_program.graph_module, nodes, inputs_vars, custom_ops
                 )
-                assert isinstance(output_args, tuple | relax.Tuple)
+                output_args = self._flatten_output_args(output_args)
 
                 if unwrap_unit_return_tuple and len(output_args) == 1:
                     ret = output_args[0]
