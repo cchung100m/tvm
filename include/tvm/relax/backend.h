@@ -44,6 +44,16 @@ TVM_DLL Pass LowerRuntimeBuiltin();
  */
 TVM_DLL Pass VMShapeLower();
 
+/*!
+ * \brief Canonicalize ShapeExpr by extracting composite PrimExpr into separate bindings.
+ *
+ * This pass should run BEFORE VMShapeLower to ensure all shape expressions
+ * are pre-computed and available in slots.
+ *
+ * \return The pass object.
+ */
+TVM_DLL Pass ShapeExprCanonicalize();
+
 }  // namespace transform
 }  // namespace relax
 }  // namespace tvm
